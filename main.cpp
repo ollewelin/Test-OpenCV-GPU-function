@@ -27,18 +27,19 @@ int main()
 
     input_jpg_BGR.convertTo(input_jpg_FC3, CV_32FC3, 1.0f/255.0f);///Ordinary CPU function
 
+    cv::cuda::Stream stream_data_A;///Instantiate stream object used for asynchronous operation
+
+    cv::cuda::GpuMat test_gpu_mat;///
+    cv::cuda::GpuMat gpu_roi_part;
+    cv::cuda::GpuMat gpu_roi_part_B;
+    cv::cuda::GpuMat gpu_roi_part_C;
+
 
 
     if(input_jpg_FC3.cols > 49 && input_jpg_FC3.rows > 49)///Check proper size of image
     {
         printf("Start a GPU test\n");
 
-        cv::cuda::Stream stream_data_A;///Instantiate stream object used for asynchronous operation
-
-        cv::cuda::GpuMat test_gpu_mat;///
-        cv::cuda::GpuMat gpu_roi_part;
-        cv::cuda::GpuMat gpu_roi_part_B;
-        cv::cuda::GpuMat gpu_roi_part_C;
 
         test_gpu_mat.create(input_jpg_FC3.rows,input_jpg_FC3.cols,CV_32FC3);
 
@@ -120,5 +121,13 @@ int main()
 
     printf("End GPU test\n");
     waitKey(5000);
+    m_input_jpg_FC3.release();
+    input_jpg_FC3.release();
+    part_of_inputJPG.release();
+    test_gpu_mat.release();
+    gpu_roi_part.release();
+    gpu_roi_part_B.release();
+    gpu_roi_part_C.release();
+
     printf("End Program");
 }

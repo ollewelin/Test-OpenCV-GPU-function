@@ -121,6 +121,7 @@ int main()
 
     printf("End GPU test\n");
     waitKey(5000);
+    input_jpg_BGR.release();
     m_input_jpg_FC3.release();
     input_jpg_FC3.release();
     part_of_inputJPG.release();

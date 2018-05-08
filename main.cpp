@@ -108,7 +108,7 @@ int main()
                 imshow("input_jpg_FC3", input_jpg_FC3);
                 imshow("part_of_inputJPG", part_of_inputJPG);
 
-                waitKey(1000);
+                waitKey(100);
             }
         }
 ///End GPU test
@@ -120,7 +120,7 @@ int main()
     imshow("m_input_jpg_FC3", m_input_jpg_FC3);
 
     printf("End GPU test\n");
-    waitKey(5000);
+    waitKey(500);
     input_jpg_BGR.release();
     m_input_jpg_FC3.release();
     input_jpg_FC3.release();
@@ -128,7 +128,7 @@ int main()
     test_gpu_mat.release();
     gpu_roi_part.release();
     gpu_roi_part_B.release();
-    gpu_roi_part_C.release();
-
+    gpu_roi_part_C.release();///
+    stream_data_A.~Stream();
     printf("End Program");
 }

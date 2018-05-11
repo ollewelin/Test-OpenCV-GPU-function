@@ -30,12 +30,29 @@ int main()
     cv::cuda::Stream stream_data_A;///Instantiate stream object used for asynchronous operation
 
     cv::cuda::GpuMat test_gpu_mat;///
+    cv::Mat m_test;
+    cv::Mat m_sum_test;
+    m_sum_test.create(2,2,CV_32FC3);
+    cv::cuda::GpuMat sum_test;
+    sum_test.create(2,2,CV_32FC3);
+    for(int i=0;i<2;i++)
+    {
+        for(int j=0;j<2*3;j++)
+        {
+            m_sum_test.at<float>(i,j) = 3.0f * ((j%3)+1);
+        }
+    }
+    sum_test.upload(m_sum_test);
+    cv::Scalar sum_of_gpu_mat;
     cv::cuda::GpuMat gpu_roi_part;
     cv::cuda::GpuMat gpu_roi_part_B;
     cv::cuda::GpuMat gpu_roi_part_C;
-
-
-
+    cv::cuda::GpuMat gpu_std_test;
+    m_test.create(8,8,CV_8UC1);
+    gpu_std_test.create(8,8,CV_8UC1);
+    gpu_std_test.upload(m_test);
+    cv::Scalar mean_from_g_mat;
+    cv::Scalar std_deviation;
     if(input_jpg_FC3.cols > 49 && input_jpg_FC3.rows > 49)///Check proper size of image
     {
         printf("Start a GPU test\n");
@@ -83,8 +100,11 @@ int main()
                 {
                     cv::cuda::multiply(gpu_roi_part,gpu_roi_part_B,gpu_roi_part_C, scaler, -1, stream_data_A);///Operation Asynchronous with CPU
                 }
+///cv::cuda::meanStdDev(const GpuMat& mtx, Scalar& mean, Scalar& stddev)
 
+///cv::cuda::meanStdDev(gpu_std_test, mean_from_g_mat, std_deviation);
 
+sum_of_gpu_mat = cv::cuda::sum(sum_test);
                 gpu_roi_part_C.download(part_of_inputJPG, stream_data_A);///Data back to CPU "host"
                 test_gpu_mat.download(input_jpg_FC3, stream_data_A);///Data back to CPU "host"
 
@@ -111,16 +131,36 @@ int main()
                 waitKey(100);
             }
         }
-///End GPU test
+        std::cout << sum_of_gpu_mat << std::endl;
+      //  printf("sum_of_gpu_mat = %f\n", sum_of_gpu_mat);
+        printf("sum_of_gpu_mat.channels() = %d\n", sum_of_gpu_mat.channels);
+        float ch0_a = sum_of_gpu_mat[0];
+        float ch1_a = sum_of_gpu_mat[1];
+        float ch2_a = sum_of_gpu_mat[2];
+        printf("ch0_a = %f\n", ch0_a);
+        printf("ch1_a = %f\n", ch1_a);
+        printf("ch2_a = %f\n", ch2_a);
+
+        ///End GPU test
     }
 
     cv::Mat m_input_jpg_FC3;///
-    m_input_jpg_FC3 = input_jpg_FC3.createMatHeader();///Copy over the ordinary OpenCV Mat if you want to use that
-
+    m_input_jpg_FC3 = input_jpg_FC3.createMatHeader();///Copy over the ordinary OpenCV Mat if you want to use that.
+    ///Note: now after the .createMatHeader() function used the m_input_jpg_FC3 and input_jpg_FC3 are the same physical memory on the CPU host
+    for(int i=0;i<(m_input_jpg_FC3.cols);i++)
+    {
+        m_input_jpg_FC3.at<float>(0,i*3+0) = 0.0;///Blue
+        m_input_jpg_FC3.at<float>(0,i*3+1) = 0.0;///Green
+        m_input_jpg_FC3.at<float>(0,i*3+2) = 1.0;///Red
+        ///Note this will also affect the input_jpg_FC3 because the m_input_jpg_FC3 and input_jpg_FC3 are the same physical memory on the CPU host
+        ///So when add some RED pixel on first row they also aper in the cv::cuda::HostMem input_jpg_FC3 as well because they are same physical memory on the CPU host
+    }
+    m_input_jpg_FC3.at<float>(0,0) = 1.0;
     imshow("m_input_jpg_FC3", m_input_jpg_FC3);
+    imshow("input_jpg_FC3", input_jpg_FC3);
 
     printf("End GPU test\n");
-    waitKey(500);
+    waitKey(15000);
     input_jpg_BGR.release();
     m_input_jpg_FC3.release();
     input_jpg_FC3.release();

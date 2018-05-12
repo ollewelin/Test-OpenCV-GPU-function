@@ -8,13 +8,16 @@ using namespace std;
 using namespace cv;
 using namespace cv::cuda;
 
-
 int main()
 {
     printf("GPU ON = %d\n", cv::cuda::getCudaEnabledDeviceCount());
     printf("OpenCV version:\n");
     std::cout << CV_VERSION << std::endl;
 
+    printf("************\n");
+    printf("Start test 1\n");
+    printf("************\n");
+    printf("\n");
 
     printf("Now use file:\n");
     printf("input.JPG\n");
@@ -22,7 +25,9 @@ int main()
     cv::Mat input_jpg_BGR;
     input_jpg_BGR = cv::imread("input.JPG", 1);
 
-    cv::cuda::HostMem input_jpg_FC3(input_jpg_BGR.rows, input_jpg_BGR.cols, CV_32FC3, cv::cuda::HostMem::PAGE_LOCKED);///Allocate a CPU memory PAGE_LOCKED is 2x faster transfer to GPU and HostMem suitable for stream Asynchronous data transfer
+    ///cv::cuda::HostMem input_jpg_FC3(input_jpg_BGR.rows, input_jpg_BGR.cols, CV_32FC3, cv::cuda::HostMem::PAGE_LOCKED);///Allocate a CPU memory PAGE_LOCKED is 2x faster transfer to GPU and HostMem suitable for stream Asynchronous data transfer
+    cv::cuda::HostMem input_jpg_FC3(cv::cuda::HostMem::PAGE_LOCKED);
+    input_jpg_FC3.create(input_jpg_BGR.rows, input_jpg_BGR.cols, CV_32FC3);
     cv::cuda::HostMem part_of_inputJPG(8,8,CV_32FC3, cv::cuda::HostMem::PAGE_LOCKED);///Allocate a CPU memory PAGE_LOCKED is 2x faster transfer to GPU and HostMem suitable for stream Asynchronous data transfer
 
     input_jpg_BGR.convertTo(input_jpg_FC3, CV_32FC3, 1.0f/255.0f);///Ordinary CPU function
@@ -98,13 +103,10 @@ int main()
                 }
                 else
                 {
-                    cv::cuda::multiply(gpu_roi_part,gpu_roi_part_B,gpu_roi_part_C, scaler, -1, stream_data_A);///Operation Asynchronous with CPU
+//                    cv::cuda::multiply(gpu_roi_part,gpu_roi_part_B,gpu_roi_part_C, scaler, -1, stream_data_A);///Operation Asynchronous with CPU
+                    cv::cuda::multiply(test_gpu_mat(Rect(5+i,10,8,8)),test_gpu_mat(Rect(7+i,26+i,8,8)),test_gpu_mat(Rect(10+i,20,8,8)), scaler, -1, stream_data_A);///Operation Asynchronous with CPU
+
                 }
-///cv::cuda::meanStdDev(const GpuMat& mtx, Scalar& mean, Scalar& stddev)
-
-///cv::cuda::meanStdDev(gpu_std_test, mean_from_g_mat, std_deviation);
-
-sum_of_gpu_mat = cv::cuda::sum(sum_test);
                 gpu_roi_part_C.download(part_of_inputJPG, stream_data_A);///Data back to CPU "host"
                 test_gpu_mat.download(input_jpg_FC3, stream_data_A);///Data back to CPU "host"
 
@@ -128,9 +130,11 @@ sum_of_gpu_mat = cv::cuda::sum(sum_test);
                 imshow("input_jpg_FC3", input_jpg_FC3);
                 imshow("part_of_inputJPG", part_of_inputJPG);
 
-                waitKey(100);
+                waitKey(1000);
             }
         }
+        sum_of_gpu_mat = cv::cuda::sum(sum_test);
+
         std::cout << sum_of_gpu_mat << std::endl;
       //  printf("sum_of_gpu_mat = %f\n", sum_of_gpu_mat);
         printf("sum_of_gpu_mat.channels() = %d\n", sum_of_gpu_mat.channels);
@@ -160,7 +164,7 @@ sum_of_gpu_mat = cv::cuda::sum(sum_test);
     imshow("input_jpg_FC3", input_jpg_FC3);
 
     printf("End GPU test\n");
-    waitKey(15000);
+    waitKey(1000);
     input_jpg_BGR.release();
     m_input_jpg_FC3.release();
     input_jpg_FC3.release();
@@ -170,5 +174,95 @@ sum_of_gpu_mat = cv::cuda::sum(sum_test);
     gpu_roi_part_B.release();
     gpu_roi_part_C.release();///
     stream_data_A.~Stream();
-    printf("End Program");
+    printf("************\n");
+    printf("END test 1\n");
+    printf("************\n");
+    printf("\n");
+
+///
+
+    printf("************\n");
+    printf("Start test 2\n");
+    printf("************\n");
+    printf("\n");
+
+    float input_ar[9] = { 0.1, 0.6, 0.1,
+                         0.6, 0.9, 0.6,
+                         0.1, 0.6, 0.1 };
+    float dict_ar[27] =  {
+                         0.0, 0.8, 0.0,
+                         0.0, 0.0, 0.0,
+                         0.0, 0.0, 0.0,
+                         0.0, 1.0, 0.0,
+                         0.0, 1.0, 1.0,
+                         0.0, 1.0, 0.0,
+                         1.0, 1.0, 0.0,
+                         1.0, 0.0, 0.0,
+                         1.0, 1.0, 0.0
+                                        };
+
+    cv::Mat m_input;
+    cv::cuda::HostMem h_input;
+    cv::cuda::GpuMat g_input;
+    cv::Mat m_dict;
+    cv::cuda::HostMem h_dict;
+    cv::cuda::GpuMat g_dict;
+    cv::cuda::GpuMat g_result;
+    cv::cuda::HostMem h_result;
+
+    h_input.getAllocator(cv::cuda::HostMem::PAGE_LOCKED);
+    h_input.create(3, 3, CV_32FC1);
+    g_input.create(3, 3, CV_32FC1);
+
+    m_input = h_input.createMatHeader();
+
+    h_dict.getAllocator(cv::cuda::HostMem::PAGE_LOCKED);
+    h_dict.create(9, 3, CV_32FC1);
+    g_dict.create(9, 3, CV_32FC1);
+    h_result.getAllocator(cv::cuda::HostMem::PAGE_LOCKED);
+    h_result.create(9, 3, CV_32FC1);
+    g_result.create(9, 3, CV_32FC1);
+
+    m_dict = h_dict.createMatHeader();
+
+    cv::cuda::GpuMat g_dict_part;
+    cv::cuda::GpuMat g_resu_part;
+    g_dict_part.create(3, 3, CV_32FC1);
+    g_resu_part.create(3, 3, CV_32FC1);
+
+    cv::cuda::Stream stream_data_B;
+
+    for(int i=0;i<9;i++)
+    {
+        m_input.at<float>(i/3, i%3) = input_ar[i];
+    }
+
+    for(int i=0;i<27;i++)
+    {
+        m_dict.at<float>(i/3, i%3) = dict_ar[i];
+    }
+
+    imshow("h_input", h_input);
+    imshow("h_dict", h_dict);
+
+    cv::waitKey(100);
+    g_input.upload(h_input, stream_data_B);
+    g_dict.upload(h_dict, stream_data_B);
+
+    float scaler = 1.0;
+
+    for(int i=0;i<3;i++)
+    {
+        ///src(Rect(left,top,width, height)).copyTo(dst);
+        cv::cuda::multiply(g_input,g_dict(Rect(0, i*3, 3, 3)),g_result(Rect(0, i*3, 3, 3)), scaler, -1, stream_data_B);
+    }
+    g_result.download(h_result, stream_data_B);
+    ///Do some CPU stuff here if you have something to do during GPU working because we use CPU/GPU Asynchronous operation stream then CPU is not locked by GPU finish operation.
+    stream_data_B.waitForCompletion();///void waitForCompletion(); Blocks the current CPU thread until all operations in the stream are complete.
+    imshow("h_result", h_result);
+    cv::waitKey(1000);
+    while(1)
+    {
+        cv::waitKey(1000);
+    }
 }
